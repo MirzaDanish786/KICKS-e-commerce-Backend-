@@ -9,13 +9,13 @@ import {
   signUpController,
   verifyEmailController,
   verifyResetPasswordOtpController,
-} from "../controllers/authController.js";
+} from "../controllers/auth/authController.js";
 import isAuthenticated from "../middlewares/authMiddleware.js";
 import upload from "../middlewares/upload.js";
 
 const router = express.Router();
 
-router.post("/signup", upload.single('profilePic'), signUpController);
+router.post("/signup", upload.single('avatar'), signUpController);
 router.post("/login", loginController);
 router.post("/check-email-verification", checkEmailVerificationStatus);
 router.post("/send-reset-otp", sendResetPasswordOtpController );
