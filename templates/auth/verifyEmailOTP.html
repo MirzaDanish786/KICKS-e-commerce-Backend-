@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Email Verification - KICKS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        font-family: 'Arial', sans-serif;
+        background-color: #f4f4f4;
+        margin: 0;
+        padding: 0;
+        color: #333;
+      }
+
+      .container {
+        max-width: 600px;
+        margin: 40px auto;
+        background-color: #fff;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .logo {
+        text-align: center;
+        font-size: 28px;
+        font-weight: bold;
+        color: #4f46e5;
+        margin-bottom: 20px;
+      }
+
+      h1 {
+        font-size: 24px;
+        color: #333;
+        text-align: center;
+      }
+
+      p {
+        font-size: 16px;
+        line-height: 1.5;
+        margin-bottom: 16px;
+        text-align: center;
+      }
+
+      .otp-box {
+        font-size: 28px;
+        font-weight: bold;
+        color: #4f46e5;
+        text-align: center;
+        padding: 15px 0;
+        background: #f4f4f4;
+        border-radius: 8px;
+        margin: 20px 0;
+        letter-spacing: 4px;
+      }
+
+      .footer {
+        margin-top: 30px;
+        font-size: 14px;
+        color: #999;
+        text-align: center;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="logo">KICKS</div>
+
+      <h1>Verify Your Email Address</h1>
+
+      <p>Hi {{username}},</p>
+
+      <p>
+        Thank you for signing up with <strong>KICKS</strong>! To complete your registration, please verify your email address using the OTP below:
+      </p>
+
+      <div class="otp-box">{{otp}}</div>
+
+      <p>This OTP will expire in <strong>10 minutes</strong>. Please do not share it with anyone for your account security.</p>
+
+      <p>If you didn’t create this account, you can safely ignore this email.</p>
+
+      <div class="footer">&copy; {{year}} KICKS. All rights reserved.</div>
+    </div>
+  </body>
+</html>

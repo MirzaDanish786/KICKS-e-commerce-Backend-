@@ -1,13 +1,18 @@
-import jwt from 'jsonwebtoken';
+import jwt from "jsonwebtoken";
+import { decryptToken } from "../utils/tokenCrypto.js";
 
 const isAuthenticated = (req, res, next) => {
-  const token = req.cookies.token;
-  if (!token) {
+  const encryptedToken = req.cookies.token;
+
+  if (!encryptedToken) {
     return res.status(401).json({ message: "Not authorized." });
   }
+
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; 
+    const decryptedToken = decryptToken(encryptedToken);  
+    const decoded = jwt.verify(decryptedToken, process.env.JWT_SECRET);  
+    req.user = decoded;
+    console.log(decoded)
     next();
   } catch (e) {
     return res.status(401).json({ message: "Invalid or expired token." });
