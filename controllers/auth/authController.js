@@ -13,18 +13,18 @@ import { hashPassword, normalizePath, signJWT } from "../../utils/helper.js";
 export const signUpController = async (req, res) => {
   const validate = signupValidation.safeParse(req.body);
   if (!validate.success) {
-    const firstError = validate.error.issues[0].message || "Invalid";
-    return error(firstError, 400);
+    const firstError = validate.error?.issues[0].message || "Invalid";
+    return res.error(400,firstError );
   }
   const avatar = normalizePath(req.file?.path);
   const { username, email, password } = validate.data;
 
   const exsitUser = await User.findOne({ email });
   if (exsitUser) {
-    return res.error("User already exist!", 409);
+    return res.error(409,"User already exist!");
   }
 
-  const hashedPassword = hashPassword(password);
+  const hashedPassword = await hashPassword(password);
   const user = new User({
     username,
     email,
