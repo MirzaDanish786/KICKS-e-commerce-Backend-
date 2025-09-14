@@ -6,9 +6,15 @@ import { isValidUsername } from "../../utils/ValidateCredentials.js";
 import { isValidPassword } from "../../utils/ValidateCredentials.js";
 import { isValidEmail } from "../../utils/ValidateCredentials.js";
 import { encryptToken } from "../../utils/tokenCrypto.js";
-import { loginValidation, signupValidation } from "../../utils/validations.js";
+import {
+  loginValidation,
+  otpValidation,
+  signupValidation,
+  verifyEmailValidation,
+} from "../../utils/validations.js";
 import {
   compareHashPassword,
+  generateOTP,
   hashPassword,
   normalizePath,
   signJWT,
@@ -222,83 +228,135 @@ export const meController = async (req, res) => {
   const id = req.user?.id;
   const user = await User.findById(id);
   if (!user) {
-    return res.error(404, 'User not found!');
+    return res.error(404, "User not found!");
   }
   return res.success(200, "User fetched successfully!", user);
 };
 
 // Send verify email OTP:
 export const sendVerifyEmailOtpController = async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email) {
-      return res.status(400).json({ message: "Email is required." });
-    }
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
-    }
-
-    if (user.isAccountVerified) {
-      return res.status(200).json({ message: "Account is already verified!" });
-    }
-
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
-
-    user.verifyOtp = otp;
-    user.verifyOtpExpireAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-    await user.save();
-
-    const username = user.username;
-
-    await sendEmail(
-      user.email,
-      "Account Verification OTP",
-      "auth/verifyEmailOTP",
-      { username, otp, year: 2025 }
-    );
-
-    return res
-      .status(200)
-      .json({ message: "Verification OTP sent successfully!" });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: "Failed to send verification OTP." });
+  const validate = verifyEmailValidation.safeParse(req.body);
+  if (!validate.success) {
+    return res.error(400, validate.error.issues[0].message || "Invalid email");
   }
+  const {email} = validate.data;
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.error(404, "User not found!");
+  }
+  if (user.isAccountVerified) {
+    return res.error(400, "Account already verified!");
+  }
+  const otp = generateOTP();
+  user.verifyOtp = otp;
+  user.verifyOtpExpireAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await user.save();
+
+  await sendEmail(
+    user.email,
+    "Account Verification OTP",
+    "auth/verifyEmailOTP",
+    { username: user.username, otp, year: new Date().getFullYear() }
+  );
+
+  return res.success(200, "Verification OTP sent successfully!");
+
+  // try {
+  //   const { email } = req.body;
+
+  //   if (!email) {
+  //     return res.status(400).json({ message: "Email is required." });
+  //   }
+
+  //   const user = await User.findOne({ email });
+  //   if (!user) {
+  //     return res.status(404).json({ message: "User not found." });
+  //   }
+
+  //   if (user.isAccountVerified) {
+  //     return res.status(200).json({ message: "Account is already verified!" });
+  //   }
+
+  //   const otp = String(Math.floor(100000 + Math.random() * 900000));
+
+  //   user.verifyOtp = otp;
+  //   user.verifyOtpExpireAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  //   await user.save();
+
+  //   const username = user.username;
+
+  //   await sendEmail(
+  //     user.email,
+  //     "Account Verification OTP",
+  //     "auth/verifyEmailOTP",
+  //     { username, otp, year: 2025 }
+  //   );
+
+  //   return res
+  //     .status(200)
+  //     .json({ message: "Verification OTP sent successfully!" });
+  // } catch (e) {
+  //   console.error(e);
+  //   res.status(500).json({ message: "Failed to send verification OTP." });
+  // }
 };
 
 // Verify Email:
 export const verifyEmailController = async (req, res) => {
-  try {
-    const { verifyOtp } = req.body;
-    // const email = req.user?.email;
-
-    const user = await User.findOne({ verifyOtp });
-    if (!user) {
-      return res.status(404).json({ message: "Invalid OTP!" });
-    }
-    if (Date.now() > user.verifyOtpExpireAt) {
-      return res.status(400).json({ message: "OTP Expired!" });
-    }
-    if (verifyOtp !== user.verifyOtp) {
-      return res.status(400).json({ message: "Invalid OTP" });
-    }
-
-    user.isAccountVerified = true;
-    user.verifyOtp = null;
-    user.verifyOtpExpireAt = null;
-
-    await user.save();
-
-    return res.status(200).json({ message: "Email successfully verified!" });
-  } catch (error) {
-    console.log(error);
-    res
-      .status(500)
-      .json({ message: "Something went wrong during verification." });
+  const validate = otpValidation.safeParse(req.body);
+  if(!validate.success){
+    return res.error(400,validate.error.issues[0].message || 'Invalid OTP')
   }
+  const {otp} = validate.data;
+
+  const user = await User.findOne({verifyOtp: otp })
+  if(!user){
+    return res.error(404, "Invalid or expired OTP.")
+  }
+  if(Date.now() > user.verifyOtpExpireAt){
+    return res.error(401, "OTP has expired.")
+  }
+  if(user.verifyOtp !== otp){
+    return res.error(400, "Incorrect OTP. Please try again.")
+  }
+
+  user.isAccountVerified = true;
+  user.verifyOtp = null;
+  user.verifyOtpExpireAt = null;
+
+  await user.save();
+
+  return res.success(200, 'Email verified successfully!')
+
+  // try {
+  //   const { verifyOtp } = req.body;
+  //   // const email = req.user?.email;
+
+  //   const user = await User.findOne({ verifyOtp });
+  //   if (!user) {
+  //     return res.status(404).json({ message: "Invalid OTP!" });
+  //   }
+  //   if (Date.now() > user.verifyOtpExpireAt) {
+  //     return res.status(400).json({ message: "OTP Expired!" });
+  //   }
+  //   if (verifyOtp !== user.verifyOtp) {
+  //     return res.status(400).json({ message: "Invalid OTP" });
+  //   }
+
+  //   user.isAccountVerified = true;
+  //   user.verifyOtp = null;
+  //   user.verifyOtpExpireAt = null;
+
+  //   await user.save();
+
+  //   return res.status(200).json({ message: "Email successfully verified!" });
+  // } catch (error) {
+  //   console.log(error);
+  //   res
+  //     .status(500)
+  //     .json({ message: "Something went wrong during verification." });
+  // }
 };
 
 // Send resetPassword OTP controller:
