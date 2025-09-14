@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import { decryptToken } from "../utils/tokenCrypto.js";
 
 const isAuthenticated = (req, res, next) => {
-  const encryptedToken = req.cookies.token;
+  const encryptedToken = req.cookies.authToken;
 
   if (!encryptedToken) {
     return res.status(401).json({ message: "Not authorized." });
