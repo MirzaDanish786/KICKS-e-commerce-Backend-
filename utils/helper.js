@@ -16,6 +16,9 @@ export const normalizePath = (filePath) => {
 export const hashPassword = async(password, saltRounds = 10)=>{
  return await bcrypt.hash(password, saltRounds);
 }
+export const compareHashPassword = async(enteredPassword, actualPassword)=>{
+  return await bcrypt.compare(enteredPassword, actualPassword);
+}
 export const signJWT = (payload, expiresIn)=>{
   return jwt.sign({payload},process.env.JWT_SECRET, {expiresIn})
 }
