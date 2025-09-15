@@ -47,3 +47,16 @@ export const loginValidation = z.object({
     .string()
     .nonempty("Password is required"),
 });
+
+export const verifyEmailValidation = z.object({
+  email: z.string().trim().email({ message: "Invalid email address." }),
+});
+
+export const otpValidation = z.object({
+  otp: z
+    .string()
+    .length(6, "OTP must be 6 digits")
+    .regex(/^\d+$/, "OTP must contain only numbers"),
+});
+
+

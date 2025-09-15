@@ -22,3 +22,6 @@ export const compareHashPassword = async (enteredPassword, actualPassword) => {
 export const signJWT = (payload, expiresIn) => {
   return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn });
 };
+export const generateOTP = ()=>{
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
