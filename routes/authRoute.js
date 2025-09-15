@@ -17,11 +17,11 @@ const router = express.Router();
 
 router.post("/signup", upload.single('avatar'), signUpController);
 router.post("/login", loginController);
-router.post("/check-email-verification", checkEmailVerificationStatus);
-router.post("/send-reset-otp", sendResetPasswordOtpController );
-router.post("/verify-reset-otp", verifyResetPasswordOtpController );
-router.post("/send-verify-otp", sendVerifyEmailOtpController);
-router.post("/verify-email", verifyEmailController );
+router.get("/email/status", checkEmailVerificationStatus);
+router.post("/password/otp", sendResetPasswordOtpController );
+router.post("/password/verify", verifyResetPasswordOtpController );
+router.post("/email/otp", sendVerifyEmailOtpController);
+router.post("/email/verify", verifyEmailController );
 
 // Routes that use isAuthenticated Middleware:f
 router.use(isAuthenticated);
