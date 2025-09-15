@@ -7,21 +7,26 @@ import { isValidPassword } from "../../utils/ValidateCredentials.js";
 import { isValidEmail } from "../../utils/ValidateCredentials.js";
 import { encryptToken } from "../../utils/tokenCrypto.js";
 import { loginValidation, signupValidation } from "../../utils/validations.js";
-import { compareHashPassword, hashPassword, normalizePath, signJWT } from "../../utils/helper.js";
+import {
+  compareHashPassword,
+  hashPassword,
+  normalizePath,
+  signJWT,
+} from "../../utils/helper.js";
 
 // signUpController:
 export const signUpController = async (req, res) => {
   const validate = signupValidation.safeParse(req.body);
   if (!validate.success) {
     const firstError = validate.error?.issues[0].message || "Invalid";
-    return res.error(400,firstError );
+    return res.error(400, firstError);
   }
   const avatar = normalizePath(req.file?.path);
   const { username, email, password } = validate.data;
 
   const exsitUser = await User.findOne({ email });
   if (exsitUser) {
-    return res.error(409,"User already exist!");
+    return res.error(409, "User already exist!");
   }
 
   const hashedPassword = await hashPassword(password);
@@ -127,18 +132,18 @@ export const signUpController = async (req, res) => {
 // loginController:
 export const loginController = async (req, res) => {
   const validate = loginValidation.safeParse(req.body);
-  if(!validate.success){
-    const firstError = validate.error.issues[0].message || 'Invalid';
-    return res.error(400, firstError)
+  if (!validate.success) {
+    const firstError = validate.error.issues[0].message || "Invalid";
+    return res.error(400, firstError);
   }
-  const {email, password} = validate.data;
-  const user = await User.findOne({email}).select("+password");
-  if(!user){
-    return res.error(404, 'Please sign up first!');
+  const { email, password } = validate.data;
+  const user = await User.findOne({ email }).select("+password");
+  if (!user) {
+    return res.error(404, "Please sign up first!");
   }
   const isMatch = await compareHashPassword(password, user.password);
-  if(!isMatch){
-    return res.error(401, 'Incorrect password');
+  if (!isMatch) {
+    return res.error(401, "Incorrect password");
   }
   const authToken = signJWT(
     {
@@ -158,9 +163,8 @@ export const loginController = async (req, res) => {
     maxAge: 24 * 60 * 60 * 1000,
   });
 
-  return res.success(200, 'Successfully login!', user)
+  return res.success(200, "Successfully login!", user);
 
-  
   // try {
   //   const { email, password } = req.body;
 
@@ -204,34 +208,23 @@ export const loginController = async (req, res) => {
 
 // logoutController:
 export const logoutController = async (req, res) => {
-    res.cookie("authToken", "", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-      expires: new Date(0),
-    });
-    return res.success(200, "Successfully logged out!");
-  } 
-
+  res.cookie("authToken", "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    expires: new Date(0),
+  });
+  return res.success(200, "Successfully logged out!");
+};
 
 // meController:
 export const meController = async (req, res) => {
-  try {
-    // const {id} = req?.user;
-    const user = await User.findById(req?.user?.id).select(
-      "username email avatar role"
-    );
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    return res.status(200).json({
-      message: "User is authenticated!",
-      user,
-    });
-  } catch (error) {
-    console.log(e);
-    res.status(500).json({ message: "Failed" });
+  const id = req.user?.id;
+  const user = await User.findById(id);
+  if (!user) {
+    return res.error(404, 'User not found!');
   }
+  return res.success(200, "User fetched successfully!", user);
 };
 
 // Send verify email OTP:
