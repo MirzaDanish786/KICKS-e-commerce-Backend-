@@ -5,12 +5,13 @@ import { sendEmail } from "../../utils/sendEmail.js";
 import { isValidUsername } from "../../utils/ValidateCredentials.js";
 import { isValidPassword } from "../../utils/ValidateCredentials.js";
 import { isValidEmail } from "../../utils/ValidateCredentials.js";
-import { encryptToken } from "../../utils/tokenCrypto.js";
+import { decryptToken, encryptToken } from "../../utils/tokenCrypto.js";
 import {
   loginValidation,
   otpValidation,
   signupValidation,
-  verifyEmailValidation,
+  emailValidation,
+  verifyEmailControllerValidation,
 } from "../../utils/validations.js";
 import {
   compareHashPassword,
@@ -235,11 +236,11 @@ export const meController = async (req, res) => {
 
 // Send verify email OTP:
 export const sendVerifyEmailOtpController = async (req, res) => {
-  const validate = verifyEmailValidation.safeParse(req.body);
+  const validate = emailValidation.safeParse(req.body);
   if (!validate.success) {
     return res.error(400, validate.error.issues[0].message || "Invalid email");
   }
-  const {email} = validate.data;
+  const { email } = validate.data;
   const user = await User.findOne({ email });
   if (!user) {
     return res.error(404, "User not found!");
@@ -248,8 +249,10 @@ export const sendVerifyEmailOtpController = async (req, res) => {
     return res.error(400, "Account already verified!");
   }
   const otp = generateOTP();
+  const verifyEmailToken = signJWT({ id: user._id }, "10min");
   user.verifyOtp = otp;
-  user.verifyOtpExpireAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  user.verifyOtpExpireAt = new Date(Date.now() + 10 * 60 * 1000);
+  user.verifyEmailToken = verifyEmailToken;
   await user.save();
 
   await sendEmail(
@@ -259,7 +262,9 @@ export const sendVerifyEmailOtpController = async (req, res) => {
     { username: user.username, otp, year: new Date().getFullYear() }
   );
 
-  return res.success(200, "Verification OTP sent successfully!");
+  return res.success(200, "Verification OTP sent successfully!", {
+    verifyEmailToken: user.verifyEmailToken,
+  });
 
   // try {
   //   const { email } = req.body;
@@ -304,30 +309,31 @@ export const sendVerifyEmailOtpController = async (req, res) => {
 
 // Verify Email:
 export const verifyEmailController = async (req, res) => {
-  const validate = otpValidation.safeParse(req.body);
-  if(!validate.success){
-    return res.error(400,validate.error.issues[0].message || 'Invalid OTP')
+  const validate = verifyEmailControllerValidation.safeParse(req.body);
+  if (!validate.success) {
+    return res.error(400, validate.error.issues[0].message || "Invalid OTP");
   }
-  const {otp} = validate.data;
+  const { otp, verifyEmailToken } = validate.data;
 
-  const user = await User.findOne({verifyOtp: otp })
-  if(!user){
-    return res.error(404, "Invalid or expired OTP.")
+  const user = await User.findOne({ verifyEmailToken });
+  if (!user) {
+    return res.error(404, "Invalid or expired OTP.");
   }
-  if(Date.now() > user.verifyOtpExpireAt){
-    return res.error(401, "OTP has expired.")
+  if (Date.now() > user.verifyOtpExpireAt) {
+    return res.error(401, "OTP has expired.");
   }
-  if(user.verifyOtp !== otp){
-    return res.error(400, "Incorrect OTP. Please try again.")
+  if (user.verifyOtp !== otp) {
+    return res.error(400, "Incorrect OTP. Please try again.");
   }
 
   user.isAccountVerified = true;
   user.verifyOtp = null;
+  user.verifyEmailToken = null;
   user.verifyOtpExpireAt = null;
 
   await user.save();
 
-  return res.success(200, 'Email verified successfully!')
+  return res.success(200, "Email verified successfully!");
 
   // try {
   //   const { verifyOtp } = req.body;
@@ -453,28 +459,23 @@ export const verifyResetPasswordOtpController = async (req, res) => {
   }
 };
 
-// Check isAccountVerified status:
+// Check email verification status
 export const checkEmailVerificationStatus = async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email) {
-      return res.status(400).json({ message: "Email is required." });
-    }
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
-    }
-
-    if (!user.isAccountVerified) {
-      return res
-        .status(403)
-        .json({ message: "Please verify your account first!" });
-    }
-
-    return res.status(200).json({ message: "Email is verified." });
-  } catch (error) {
-    console.error("Email verification check failed:", error);
-    return res.status(500).json({ message: "Internal server error" });
+  const validate = emailValidation.safeParse(req.query);
+  if (!validate.success) {
+    return res.error(400, validate.error.issues[0].message || "Invalid email");
   }
+
+  const { email } = validate.data;
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.error(404, "User not found!");
+  }
+
+  if (!user.isAccountVerified) {
+    return res.error(403, "Please verify your account first!");
+  }
+
+  return res.success(200, "Email is verified.", { email: user.email, isVerified: true });
 };

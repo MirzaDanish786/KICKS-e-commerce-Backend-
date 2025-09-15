@@ -7,8 +7,10 @@ const userSchema = new mongoose.Schema({
   avatar: {type: String, default: null},
   isAccountVerified: {type: Boolean, default: false},
   verifyOtp: {type: String, default: null},
+  verifyEmailToken: {type: String, default: null},
   verifyOtpExpireAt: {type: Date, default: null},
   resetOtp: {type:String, default: null},
+  resetPasswordToken: {type:String, default: null},
   resetOtpExpireAt: {type: Date, default: null},
 });
 
@@ -21,7 +23,9 @@ userSchema.set("toJSON", {
     delete ret.password; 
     delete ret.verifyOtp;     
     delete ret.verifyOtpExpireAt;
+    delete ret.verifyEmailToken;
     delete ret.resetOtp;
+    delete ret.resetPasswordToken;
     delete ret.resetOtpExpireAt;
     return ret;
   },
