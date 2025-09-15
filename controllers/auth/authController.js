@@ -6,8 +6,8 @@ import { isValidUsername } from "../../utils/ValidateCredentials.js";
 import { isValidPassword } from "../../utils/ValidateCredentials.js";
 import { isValidEmail } from "../../utils/ValidateCredentials.js";
 import { encryptToken } from "../../utils/tokenCrypto.js";
-import { signupValidation } from "../../utils/validations.js";
-import { hashPassword, normalizePath, signJWT } from "../../utils/helper.js";
+import { loginValidation, signupValidation } from "../../utils/validations.js";
+import { compareHashPassword, hashPassword, normalizePath, signJWT } from "../../utils/helper.js";
 
 // signUpController:
 export const signUpController = async (req, res) => {
@@ -24,7 +24,7 @@ export const signUpController = async (req, res) => {
     return res.error("User already exist!", 409);
   }
 
-  const hashedPassword = hashPassword(password);
+  const hashedPassword = await hashPassword(password);
   const user = new User({
     username,
     email,
@@ -126,6 +126,39 @@ export const signUpController = async (req, res) => {
 
 // loginController:
 export const loginController = async (req, res) => {
+  const validate = loginValidation.safeParse(req.body);
+  if(!validate.success){
+    const firstError = validate.error.issues[0].message || 'Invalid';
+    return res.error(400, firstError)
+  }
+  const {email, password} = validate.data;
+  const user = await User.findOne({email}).select("+password");
+  if(!user){
+    return res.error(404, 'Please sign up first!');
+  }
+  const isMatch = await compareHashPassword(password, user.password);
+  if(!isMatch){
+    return res.error(401, 'Incorrect password');
+  }
+  const authToken = signJWT(
+    {
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+    },
+    "1d"
+  );
+
+  const encryptedToken = encryptToken(authToken);
+  res.cookie("authToken", encryptedToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    maxAge: 24 * 60 * 60 * 1000,
+  });
+
+  return res.success(200, 'Successfully login!', user)
 
   
   // try {
