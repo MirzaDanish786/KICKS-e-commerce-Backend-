@@ -18,9 +18,15 @@ userSchema.set("toJSON", {
   transform: (_, ret) => {
     ret.id = ret._id.toString();
     delete ret._id;
+    delete ret.password; 
+    delete ret.verifyOtp;     
+    delete ret.verifyOtpExpireAt;
+    delete ret.resetOtp;
+    delete ret.resetOtpExpireAt;
     return ret;
   },
 });
+
 const User = mongoose.model("User", userSchema);
 
 export default User;
