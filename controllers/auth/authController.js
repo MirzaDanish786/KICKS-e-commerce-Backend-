@@ -204,31 +204,15 @@ export const loginController = async (req, res) => {
 
 // logoutController:
 export const logoutController = async (req, res) => {
-  try {
-    res.cookie("token", "", {
+    res.cookie("authToken", "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
       expires: new Date(0),
     });
+    return res.success(200, "Successfully logged out!");
+  } 
 
-    // Logout verified email:
-    const userEmail = req.user?.email;
-
-    // if (userEmail) {
-    //   await sendEmail(
-    //     userEmail,
-    //     "Logout Confirmation",
-    //     "You have successfully logged out from KICKS."
-    //   );
-    // }
-
-    return res.status(200).json({ message: "User logged out successfully" });
-  } catch (e) {
-    console.log(e);
-    res.status(500).json({ message: "Logout failed" });
-  }
-};
 
 // meController:
 export const meController = async (req, res) => {
