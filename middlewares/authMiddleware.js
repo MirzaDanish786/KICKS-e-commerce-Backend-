@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import { decryptToken } from "../utils/tokenCrypto.js";
+import { verifyJWT } from "../utils/helper.js";
 
 const isAuthenticated = (req, res, next) => {
   const encryptedToken = req.cookies.authToken;
@@ -10,7 +11,7 @@ const isAuthenticated = (req, res, next) => {
 
   try {
     const decryptedToken = decryptToken(encryptedToken);  
-    const decoded = jwt.verify(decryptedToken, process.env.JWT_SECRET);  
+    const decoded = verifyJWT(decryptedToken) ;
     req.user = decoded;
     console.log(decoded)
     next();
