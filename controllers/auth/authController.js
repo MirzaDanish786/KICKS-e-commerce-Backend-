@@ -12,6 +12,7 @@ import {
   signupValidation,
   emailValidation,
   verifyEmailControllerValidation,
+  verifyResetPasswordOtpSchema,
 } from "../../utils/validations.js";
 import {
   compareHashPassword,
@@ -19,6 +20,7 @@ import {
   hashPassword,
   normalizePath,
   signJWT,
+  verifyJWT,
 } from "../../utils/helper.js";
 
 // signUpController:
@@ -69,71 +71,6 @@ export const signUpController = async (req, res) => {
     username,
   });
   return res.success(201, "Signup successfully!", user);
-
-  // const { username, email, password } = req.body;
-  // const profilePic = req.file?.filename;
-
-  // if (!isValidUsername(username)) {
-  //   return res.status(400).json({
-  //     message:
-  //       "Username must be 3-20 characters long and can only contain letters, numbers, and underscores.",
-  //   });
-  // }
-
-  // if (!isValidEmail(email)) {
-  //   return res
-  //     .status(400)
-  //     .json({ message: "Please provide a valid email address." });
-  // }
-
-  // if (!isValidPassword(password)) {
-  //   return res.status(400).json({
-  //     message:
-  //       "Password must be at least 8 characters, include uppercase, lowercase, number, and special character.",
-  //   });
-  // }
-
-  // // Check if user already exists
-  // const existUser = await User.findOne({ email });
-  // if (existUser) {
-  //   return res.status(409).json({ message: "User already exists!" });
-  // }
-
-  // const saltRounds = 10;
-  // const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-  // const user = new User({
-  //   username,
-  //   email,
-  //   password: hashedPassword,
-  //   profilePic,
-  //   role: 'user',
-  // });
-  // await user.save();
-
-  // const token = jwt.sign(
-  //   { id: user._id, username: user.username, email: user.email, role: user.role },
-  //   process.env.JWT_SECRET,
-  //   { expiresIn: "1d" }
-  // );
-
-  // const encryptedToken = encryptToken(token);
-
-  // res.cookie("token", encryptedToken, {
-  //   httpOnly: true,
-  //   secure: process.env.NODE_ENV === "production",
-  //   sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-  //   maxAge: 24 * 60 * 60 * 1000,
-  // });
-
-  // await sendEmail(user.email, "Welcome to KICKS!", "auth/welcome", {
-  //   username,
-  // });
-
-  // return res.status(201).json({
-  //   message: "User signed up successfully!",
-  //   profileUrl: profilePic ? `/uploads/${profilePic}` : null,
-  // });
 };
 
 // loginController:
@@ -171,46 +108,6 @@ export const loginController = async (req, res) => {
   });
 
   return res.success(200, "Successfully login!", user);
-
-  // try {
-  //   const { email, password } = req.body;
-
-  //   const user = await User.findOne({ email });
-  //   if (!user) {
-  //     return res.status(404).json({ message: "Please sign up first!" });
-  //   }
-
-  //   const isMatch = await bcrypt.compare(password, user.password);
-  //   if (!isMatch) {
-  //     return res.status(401).json({ message: "Wrong Password!" });
-  //   }
-
-  //   const token = jwt.sign(
-  //     {
-  //       id: user._id,
-  //       username: user.username,
-  //       email: user.email,
-  //       role: user.role,
-  //     },
-  //     process.env.JWT_SECRET,
-  //     { expiresIn: "1d" }
-  //   );
-  //   console.log("token", token);
-
-  //   const encryptedToken = encryptToken(token);
-
-  //   res.cookie("token", encryptedToken, {
-  //     httpOnly: true,
-  //     secure: process.env.NODE_ENV === "production",
-  //     sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-  //     maxAge: 24 * 60 * 60 * 1000,
-  //   });
-
-  //   return res.status(200).json({ message: "User successfully logged in!" });
-  // } catch (e) {
-  //   console.log(e);
-  //   res.status(500).json({ message: "Login failed!" });
-  // }
 };
 
 // logoutController:
@@ -265,46 +162,6 @@ export const sendVerifyEmailOtpController = async (req, res) => {
   return res.success(200, "Verification OTP sent successfully!", {
     verifyEmailToken: user.verifyEmailToken,
   });
-
-  // try {
-  //   const { email } = req.body;
-
-  //   if (!email) {
-  //     return res.status(400).json({ message: "Email is required." });
-  //   }
-
-  //   const user = await User.findOne({ email });
-  //   if (!user) {
-  //     return res.status(404).json({ message: "User not found." });
-  //   }
-
-  //   if (user.isAccountVerified) {
-  //     return res.status(200).json({ message: "Account is already verified!" });
-  //   }
-
-  //   const otp = String(Math.floor(100000 + Math.random() * 900000));
-
-  //   user.verifyOtp = otp;
-  //   user.verifyOtpExpireAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-  //   await user.save();
-
-  //   const username = user.username;
-
-  //   await sendEmail(
-  //     user.email,
-  //     "Account Verification OTP",
-  //     "auth/verifyEmailOTP",
-  //     { username, otp, year: 2025 }
-  //   );
-
-  //   return res
-  //     .status(200)
-  //     .json({ message: "Verification OTP sent successfully!" });
-  // } catch (e) {
-  //   console.error(e);
-  //   res.status(500).json({ message: "Failed to send verification OTP." });
-  // }
 };
 
 // Verify Email:
@@ -315,7 +172,9 @@ export const verifyEmailController = async (req, res) => {
   }
   const { otp, verifyEmailToken } = validate.data;
 
-  const user = await User.findOne({ verifyEmailToken });
+  const decoded = verifyJWT(verifyEmailToken);
+
+  const user = await User.findById(decoded.id);
   if (!user) {
     return res.error(404, "Invalid or expired OTP.");
   }
@@ -334,129 +193,69 @@ export const verifyEmailController = async (req, res) => {
   await user.save();
 
   return res.success(200, "Email verified successfully!");
-
-  // try {
-  //   const { verifyOtp } = req.body;
-  //   // const email = req.user?.email;
-
-  //   const user = await User.findOne({ verifyOtp });
-  //   if (!user) {
-  //     return res.status(404).json({ message: "Invalid OTP!" });
-  //   }
-  //   if (Date.now() > user.verifyOtpExpireAt) {
-  //     return res.status(400).json({ message: "OTP Expired!" });
-  //   }
-  //   if (verifyOtp !== user.verifyOtp) {
-  //     return res.status(400).json({ message: "Invalid OTP" });
-  //   }
-
-  //   user.isAccountVerified = true;
-  //   user.verifyOtp = null;
-  //   user.verifyOtpExpireAt = null;
-
-  //   await user.save();
-
-  //   return res.status(200).json({ message: "Email successfully verified!" });
-  // } catch (error) {
-  //   console.log(error);
-  //   res
-  //     .status(500)
-  //     .json({ message: "Something went wrong during verification." });
-  // }
 };
 
 // Send resetPassword OTP controller:
 export const sendResetPasswordOtpController = async (req, res) => {
-  try {
-    // console.log("Req body:",req.body );
-
-    const email = req.body.email;
-
-    if (!email) {
-      return res.status(400).json({ message: "Email is required." });
-    }
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    if (!user.isAccountVerified) {
-      return res
-        .status(403)
-        .json({ message: "Please verify your account first!" });
-    }
-
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
-
-    user.resetOtp = otp;
-    user.resetOtpExpireAt = new Date(Date.now() + 15 * 60 * 1000);
-
-    await user.save();
-
-    await sendEmail(
-      user.email,
-      "Reset Password OTP",
-      "auth/reset-password-otp",
-      { otp, year: 2025 }
-    );
-
-    return res
-      .status(200)
-      .json({ message: "Reset password OTP sent successfully!" });
-  } catch (error) {
-    console.log(error);
-    return res.status(500).json({ message: "Something went wrong" });
+  const validete = emailValidation.safeParse(req.body);
+  if (!validete.success) {
+    return res.error(400, validete.error.issues[0].message || "Ivalid email");
   }
+  const { email } = validete.data;
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.error(404, "Please signup first!");
+  }
+  if (!user.isAccountVerified) {
+    return res.error(401, "Please verify your account first");
+  }
+
+  const otp = generateOTP();
+  const verifyResetToken = signJWT({ id: user._id }, "10min");
+
+  user.resetOtp = otp;
+  user.resetPasswordToken = verifyResetToken;
+  user.resetOtpExpireAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  await user.save();
+
+  await sendEmail(user.email, "Reset Password OTP", "auth/reset-password-otp", {
+    otp,
+    year: new Date().getFullYear(),
+  });
+  return res.success(200, "Reset OTP send successfully", {
+    resetPasswordToken: user.resetPasswordToken,
+  });
 };
 
 // Verify Reset Password Controller:
 export const verifyResetPasswordOtpController = async (req, res) => {
-  try {
-    const { email, resetOtp, newPassword } = req.body;
-
-    if (!email || !resetOtp || !newPassword) {
-      return res
-        .status(400)
-        .json({ message: "Email, OTP, and new password are required." });
-    }
-    if (!isValidPassword(newPassword)) {
-      return res.status(400).json({
-        message:
-          "Password must be at least 8 characters, include uppercase, lowercase, number, and special character.",
-      });
-    }
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    if (user.resetOtp !== resetOtp) {
-      return res.status(400).json({ message: "Invalid OTP" });
-    }
-
-    if (
-      !user.resetOtpExpireAt ||
-      Date.now() > new Date(user.resetOtpExpireAt).getTime()
-    ) {
-      return res.status(400).json({ message: "OTP expired" });
-    }
-
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-
-    user.password = hashedPassword;
-    user.resetOtp = null;
-    user.resetOtpExpireAt = null;
-
-    await user.save();
-
-    return res.status(200).json({ message: "Password reset successfully!" });
-  } catch (error) {
-    console.log(error);
-    return res.status(500).json({ message: "Something went wrong" });
+  const validate = verifyResetPasswordOtpSchema.safeParse(req.body);
+  if (!validate.success) {
+    return res.error(400, validate.error.issues[0].message || "Invalid");
   }
+  const { otp, resetPasswordToken, resetPassword } = validate.data;
+
+  const decoded = verifyJWT(resetPasswordToken);
+
+  const user = await User.findById(decoded.id);
+  if (!user) {
+    return res.error(400, "Invalid or expried OTP!");
+  }
+  if (user.resetOtp !== otp) {
+    return res.error(400, "Incorrect OTP");
+  }
+  if (Date.now() > user.resetOtpExpireAt) {
+    return res.error(401, "OTP expired!");
+  }
+  const hashedPassword = await hashPassword(resetPassword);
+  user.password = hashedPassword;
+  user.resetOtp = null;
+  user.resetPasswordToken = null;
+  user.resetOtpExpireAt = null;
+  await user.save();
+
+  return res.success(200, "Password reset successfully!");
 };
 
 // Check email verification status
@@ -477,5 +276,8 @@ export const checkEmailVerificationStatus = async (req, res) => {
     return res.error(403, "Please verify your account first!");
   }
 
-  return res.success(200, "Email is verified.", { email: user.email, isVerified: true });
+  return res.success(200, "Email is verified.", {
+    email: user.email,
+    isVerified: true,
+  });
 };
